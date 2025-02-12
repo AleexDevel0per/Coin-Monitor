@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coin Monitor</title>
+    
+
+    <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
+    <%= javascript_include_tag "chartkick", "Chart.bundle", crossorigin: "anonymous" %>
+</head>
+<body class="bg-stone-950 text-white font-sans">
+<% content_for :title, "Coin Monitor" %>
+    <div class="container mx-auto max-w-5xl p-6">
+        <h1 class="text-4xl font-bold text-center mb-6">Coin Monitor</h1>
+        
+        <% colors = { "USD-BRL" => "#34FF05", "EUR-BRL" => "#F2220F", "BTC-BRL" => "#F2CB05" } %>
+        
+        <% @chart_data.each do |currency| %>
+        <div class="bg-gray-800 rounded-xl p-6 shadow-lg mb-6">
+            <h2 class="text-2xl font-semibold mb-2 text-center"><%= currency[:name] %></h2>
+
+            <div class="text-center text-2xl font-bold py-3 rounded-xl mb-5 shadow-md bg-gray-600 text-white">
+              💰 Valor Atual: <span class="font-extrabold"><%= @latest_values[currency[:name]] %></span>
+            </div>
+
+            <div class="flex justify-center items-center">
+                <%= area_chart currency[:data], height: "400px", colors: [colors[currency[:name]]], prefix: "R$", 
+                min: currency[:data].values.min.floor, 
+                max: currency[:data].values.max.ceil, 
+                thousands: ".", decimal: "," %>  
+            </div>
+
+            <!-- Botão para mostrar/ocultar a lista -->
+            <button onclick="toggleList('<%= currency[:name] %>')" 
+                class="w-full my-4 px-4 py-2 text-white font-bold rounded transition-all duration-500" 
+                style="background-color: <%= colors[currency[:name]] %>;">
+                Mostrar/Ocultar Lista
+            </button>
+
+            <ul id="list-<%= currency[:name] %>" class="text-lg pb-4 border-b border-gray-600 transition-all duration-700 ease-in-out overflow-hidden hidden">
+              <% @formatted_values[currency[:name]].each do |date, value| %>
+                <li class="flex justify-between bg-gray-700 p-2 rounded-md mb-2 cursor-pointer transition-transform duration-300 hover:bg-gray-600"
+                  onclick="showPopup('<%= date %>', '<%= currency[:name] %>', '<%= value %>')">
+                  <span class="font-semibold"><%= date %></span>
+                  <span class="text-green-400"><%= value %></span>
+                </li>
+            <% end %>
+            </ul>
+
+            
+            <% if @formatted_values[currency[:name]].size >= 10 %>
+  <button id="top-btn-<%= currency[:name] %>" 
+    onclick="scrollToTop('<%= currency[:name] %>')" 
+    class="w-full mt-2 px-4 py-2 text-white font-bold rounded transition-all duration-500 bg-gray-600 opacity-0">
+    Voltar ao topo
+  </button>
+<% end %>
+          </div>
+        <% end %>
+    </div> <!-- Fecha a div.container -->
+
+    <script>
+    function toggleList(currency) {
+    const list = document.getElementById(`list-${currency}`);
+    const topButton = document.getElementById(`top-btn-${currency}`);
+
+    if (list.classList.contains("hidden")) {
+        // Expande a lista
+        list.classList.remove("hidden");
+        list.style.maxHeight = "0px";
+        setTimeout(() => {
+            list.style.maxHeight = list.scrollHeight + "px";
+        }, 10);
+
+        // Exibe o botão apenas depois da lista aparecer
+        if (topButton) {
+            setTimeout(() => {
+                topButton.classList.remove("opacity-0");
+                topButton.classList.add("opacity-100");
+            }, 700);
+        }
+    } else {
+        // Oculta o botão antes da lista sumir
+        if (topButton) {
+            topButton.classList.remove("opacity-100");
+            topButton.classList.add("opacity-0");
+        }
+
+        list.style.maxHeight = "0px";
+        setTimeout(() => {
+            list.classList.add("hidden");
+        }, 700);
+    }
+}
+
+function scrollToTop(currency) {
+    const section = document.getElementById(`list-${currency}`).closest('div');
+    section.scrollIntoView({ behavior: 'smooth' });
+}
+    
+    function showPopup(date, currency, value) {
+      let symbol, bgColor;
+      
+      if (currency === "USD-BRL") {
+          symbol = "$1,00";
+          bgColor = "#3B82F6"; // Azul
+      } else if (currency === "EUR-BRL") {
+          symbol = "€1,00";
+          bgColor = "#A855F7"; // Roxo
+      } else if (currency === "BTC-BRL") {
+          symbol = "BTC 1";
+          bgColor = "#F97316"; // Laranja
+      }
+  
+      const message = `No dia ${date}, o preço de ${symbol} estava em R$${value}`;
+  
+      let popup = document.getElementById("popup-message");
+  
+      if (!popup) {
+          popup = document.createElement("div");
+          popup.id = "popup-message";
+          popup.className = "fixed top-16 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-md text-white text-lg font-semibold shadow-lg opacity-0 transition-all duration-500";
+          document.body.appendChild(popup);
+      }
+  
+      popup.innerText = message;
+      popup.style.backgroundColor = bgColor;
+      
+      // Mostra o pop-up
+      popup.classList.remove("opacity-0", "scale-90");
+      popup.classList.add("opacity-100", "scale-100");
+  
+      // Oculta após 4 segundos
+      setTimeout(() => {
+          popup.classList.remove("opacity-100", "scale-100");
+          popup.classList.add("opacity-0", "scale-90");
+      }, 4000);
+  }
+  document.addEventListener("DOMContentLoaded", function() {
+    window.toggleList = toggleList;
+    window.scrollToTop = scrollToTop;
+    window.showPopup = showPopup;
+});
+
+async function updateLatestValues() {
+  try {
+    const response = await fetch('/latest_values');
+    const data = await response.json();
+
+    Object.keys(data).forEach(currency => {
+      const valueElement = document.querySelector(`#value-${currency}`);
+      if (valueElement) {
+        valueElement.innerHTML = data[currency];
+      }
+    });
+  } catch (error) {
+    console.error("Erro ao buscar os valores mais recentes:", error);
+  }
+}
+
+setInterval(updateLatestValues, 30000);
+
+    </script>
+
+</body>
+</html>
