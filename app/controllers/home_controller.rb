@@ -1,12 +1,12 @@
-require 'net/http'
-require 'json'
+require "net/http"
+require "json"
 include ActionView::Helpers::NumberHelper  # Importa os helpers do Rails
 
 class HomeController < ApplicationController
   CURRENCIES = [
-    { code: 'USD-BRL' },
-    { code: 'EUR-BRL' },
-    { code: 'BTC-BRL' }
+    { code: "USD-BRL" },
+    { code: "EUR-BRL" },
+    { code: "BTC-BRL" }
   ]
 
   def index
@@ -23,8 +23,8 @@ class HomeController < ApplicationController
       formatted_hash = {}
 
       data.each do |entry|
-        date = Time.at(entry['timestamp'].to_i).strftime("%d/%m/%Y")
-        rate = entry['high'].to_f.round(2)
+        date = Time.at(entry["timestamp"].to_i).strftime("%d/%m/%Y")
+        rate = entry["high"].to_f.round(2)
 
         hash[date] = rate
 
@@ -33,7 +33,7 @@ class HomeController < ApplicationController
       end
 
       # Pega o último valor disponível na API
-      latest_rate = data.first['high'].to_f.round(2)
+      latest_rate = data.first["high"].to_f.round(2)
       @latest_values[currency[:code]] = number_to_currency(latest_rate, unit: "R$", separator: ",", delimiter: ".", precision: currency[:code] == "BTC-BRL" ? 0 : 2)
 
       @chart_data << { name: currency[:code], data: hash }
@@ -49,7 +49,7 @@ class HomeController < ApplicationController
       response = Net::HTTP.get(url)
       data = JSON.parse(response)
 
-      latest_rate = data[currency[:code].gsub('-', '')]['high'].to_f.round(2)
+      latest_rate = data[currency[:code].gsub("-", "")]["high"].to_f.round(2)
 
       latest_values[currency[:code]] = number_to_currency(latest_rate, unit: "R$", separator: ",", delimiter: ".", precision: currency[:code] == "BTC-BRL" ? 0 : 2)
     end

@@ -4,5 +4,5 @@ Rails.application.routes.draw do
 
   # Rota para atualizar o gráfico dinamicamente
   get "update_chart", to: "home#update_chart"
-  get 'latest_values', to: 'home#latest_values'
+  get "latest_values", to: "home#latest_values"
 end
